@@ -1,0 +1,13 @@
+{
+  "short_name": "Bla Sol",
+  "name": "Bla Sol Bar",
+  "icons": [
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": "/",
+  "background_color": "#FAFAF8",
+  "theme_color": "#FAFAF8",
+  "display": "standalone",
+  "orientation": "portrait"
+}

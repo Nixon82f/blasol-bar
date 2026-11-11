@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Colores del logo de Bla Sol */
+@theme {
+  --color-brand: #7a2420;
+  --color-brand-dark: #5c1a17;
+  --color-brand-soft: #f7eceb;
+  --color-gold: #f2c744;
+}
+
+@layer base {
+  html,
+  body {
+    background: #fafaf8;
+    color: #1c1917;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  button {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,297 @@
+import React, { useMemo, useState } from 'react';
+import {
+  ClipboardList,
+  CalendarRange,
+  Truck,
+  Receipt,
+  Calculator,
+  UserRound,
+  Tags,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  ShieldCheck,
+} from 'lucide-react';
+import { money, prettyDate, addDays, todayLocal, weekRange, monthRange } from '../lib/format';
+import { computeRange } from '../lib/store';
+import { needsBackup, daysSinceBackup, shareBackup } from '../lib/backup';
+
+// Ordenado según el día de trabajo
+const SECCIONES = [
+  {
+    titulo: 'En la mañana',
+    cards: [
+      {
+        id: 'conteo',
+        icon: ClipboardList,
+        title: 'Contar inventario',
+        desc: 'Cuente lo que hay en cada freezer. La app saca solita cuánto se vendió.',
+      },
+      {
+        id: 'entradas',
+        icon: Truck,
+        title: 'Entró mercadería',
+        desc: 'Anote lo que trajo el proveedor y a cuánto lo compró.',
+      },
+    ],
+  },
+  {
+    titulo: 'Durante el día',
+    cards: [
+      {
+        id: 'gastos',
+        icon: Receipt,
+        title: 'Gastos',
+        desc: 'Planilla, recibos, hielo, cloro y cualquier otro gasto.',
+      },
+      {
+        id: 'fiados',
+        icon: UserRound,
+        title: 'Fiados',
+        desc: 'Quién debe, cuánto y si ya pagó.',
+      },
+    ],
+  },
+  {
+    titulo: 'Al cerrar',
+    cards: [
+      {
+        id: 'cierre',
+        icon: Calculator,
+        title: 'Cierre del día',
+        desc: 'Cuánto se vendió, cuánto quedó libre y si cuadra la caja.',
+      },
+      {
+        id: 'balance',
+        icon: CalendarRange,
+        title: 'Balance semana y mes',
+        desc: 'Cómo va el negocio en toda la semana o el mes, no solo un día.',
+      },
+    ],
+  },
+];
+
+export default function Home({ state, update, date, setDate, view, go, pendingDebts }) {
+  const t = view.totals;
+  const invRows = Object.values(view.rows).filter(r => r.kind !== 'compra');
+  const counted = invRows.filter(r => r.counted).length;
+  const isToday = date === todayLocal();
+  const wk = weekRange(date);
+  const mo = monthRange(date);
+  const semana = useMemo(() => computeRange(state, wk.from, wk.to), [state, wk.from, wk.to]);
+  const mes = useMemo(() => computeRange(state, mo.from, mo.to), [state, mo.from, mo.to]);
+  const [backupOk, setBackupOk] = useState(false);
+
+  const entradasHoy = (view.day.entradas || []).length;
+  const caja = view.day.caja || {};
+  const cajaContada = (caja.efectivo ?? '') !== '' || (caja.transf ?? '') !== '';
+
+  // Estado de cada tarjeta: { done, text }
+  const status = {
+    conteo:
+      counted === 0
+        ? null
+        : counted >= invRows.length
+          ? { done: true, text: 'Listo' }
+          : { text: `${counted} de ${invRows.length}` },
+    entradas: entradasHoy ? { done: true, text: `${entradasHoy} anotada${entradasHoy === 1 ? '' : 's'}` } : null,
+    gastos: t.gastos ? { done: true, text: money(t.gastos) } : null,
+    fiados: pendingDebts ? { text: `${pendingDebts} sin pagar` } : null,
+    cierre: cajaContada ? { done: true, text: 'Caja contada' } : null,
+    balance: null,
+  };
+
+  const hacerRespaldo = async () => {
+    if (await shareBackup(state)) {
+      update(d => {
+        d.lastBackup = todayLocal();
+      });
+      setBackupOk(true);
+    }
+  };
+  const diasRespaldo = daysSinceBackup(state);
+
+  return (
+    <div className="max-w-xl mx-auto px-4 pb-12 pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="flex flex-col items-center text-center">
+        <img
+          src="/logo.jpg"
+          alt="Bla Sol Bar"
+          className="w-32 h-32 rounded-3xl object-contain bg-white border border-stone-200 p-2"
+        />
+        <h1 className="mt-3 text-[22px] font-black tracking-tight text-stone-900">Bla Sol Bar</h1>
+        <span className="mt-1 text-[12px] text-brand border border-brand/30 bg-brand-soft rounded-md px-2 py-0.5">
+          Inventario y Caja
+        </span>
+
+        {/* Fecha */}
+        <div className="mt-3 flex items-center gap-1">
+          <button
+            onClick={() => setDate(addDays(date, -1))}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-stone-500 active:bg-stone-200"
+            aria-label="Día anterior"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <label className="relative px-2 text-[16px] font-medium text-stone-800">
+            {prettyDate(date)}
+            <input
+              type="date"
+              value={date}
+              onChange={e => e.target.value && setDate(e.target.value)}
+              className="absolute inset-0 opacity-0"
+            />
+          </label>
+          <button
+            onClick={() => setDate(addDays(date, 1))}
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-stone-500 active:bg-stone-200"
+            aria-label="Día siguiente"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+        {!isToday && (
+          <button onClick={() => setDate(todayLocal())} className="text-[14px] text-brand underline">
+            Volver a hoy
+          </button>
+        )}
+      </div>
+
+      {/* Resumen corto */}
+      <div className="mt-6 grid grid-cols-3 bg-white border border-stone-200 rounded-2xl divide-x divide-stone-200 text-center">
+        <div className="py-3">
+          <div className="text-[12px] text-stone-500">Vendido</div>
+          <div className="text-[17px] font-bold tabular-nums">{money(t.ventas)}</div>
+        </div>
+        <div className="py-3">
+          <div className="text-[12px] text-stone-500">Quedó libre</div>
+          <div
+            className={`text-[17px] font-bold tabular-nums ${view.activo && t.quedoLibre < 0 ? 'text-red-700' : 'text-stone-900'}`}
+          >
+            {view.activo ? money(t.quedoLibre) : '—'}
+          </div>
+        </div>
+        <div className="py-3">
+          <div className="text-[12px] text-stone-500">Ya contados</div>
+          <div className="text-[17px] font-bold tabular-nums">
+            {counted}/{invRows.length}
+          </div>
+        </div>
+      </div>
+
+      {(semana.days.length > 0 || mes.days.length > 0) && (
+        <button
+          onClick={() => go('balance')}
+          className="mt-2 w-full grid grid-cols-2 bg-white border border-stone-200 rounded-2xl divide-x divide-stone-200 text-center active:bg-stone-50"
+        >
+          {[
+            ['Libre esta semana', semana],
+            ['Libre este mes', mes],
+          ].map(([label, r]) => (
+            <div key={label} className="py-3">
+              <div className="text-[12px] text-stone-500">{label}</div>
+              <div
+                className={`text-[17px] font-bold tabular-nums ${r.totals.quedoLibre < 0 ? 'text-red-700' : 'text-stone-900'}`}
+              >
+                {r.days.length ? money(r.totals.quedoLibre) : '—'}
+              </div>
+            </div>
+          ))}
+        </button>
+      )}
+
+      {!view.hasData && view.prevDate && (
+        <p className="mt-3 text-center text-[14px] text-stone-500">
+          El inventario de inicio viene del {prettyDate(view.prevDate).toLowerCase()}.
+        </p>
+      )}
+
+      {/* Recordatorio de respaldo */}
+      {(needsBackup(state) || backupOk) && (
+        <div className="mt-4 bg-brand-soft border border-brand/25 rounded-2xl p-4">
+          {backupOk ? (
+            <div className="flex items-center gap-2 text-[15px] text-brand font-medium">
+              <ShieldCheck className="w-5 h-5" /> Respaldo guardado. El próximo se lo recuerdo en una semana.
+            </div>
+          ) : (
+            <>
+              <div className="text-[15px] font-semibold text-stone-900">Guarde un respaldo</div>
+              <p className="text-[14px] text-stone-600 mt-0.5 leading-snug">
+                {diasRespaldo === null
+                  ? 'Todavía no ha guardado ninguno.'
+                  : `Hace ${diasRespaldo} días que no guarda uno.`}{' '}
+                Así no se pierde nada si se borra Safari o cambia de celular.
+              </p>
+              <button
+                onClick={hacerRespaldo}
+                className="mt-3 h-11 w-full rounded-xl bg-brand text-white font-semibold text-[15px] active:bg-brand-dark"
+              >
+                Mandar respaldo por WhatsApp
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tarjetas por momento del día */}
+      {SECCIONES.map(sec => (
+        <div key={sec.titulo}>
+          <h2 className="mt-6 mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-stone-500">
+            {sec.titulo}
+          </h2>
+          <div className="grid grid-cols-1 gap-3">
+            {sec.cards.map(c => {
+              const Icon = c.icon;
+              const st = status[c.id];
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => go(c.id)}
+                  className="text-left bg-white border border-stone-200 rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:bg-stone-50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center ${
+                        st?.done ? 'bg-brand text-white' : 'bg-brand-soft text-brand'
+                      }`}
+                    >
+                      {st?.done && c.id !== 'gastos' ? (
+                        <Check className="w-6 h-6" strokeWidth={2.5} />
+                      ) : (
+                        <Icon className="w-6 h-6" strokeWidth={1.75} />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[17px] font-bold text-stone-900">{c.title}</span>
+                        {st && (
+                          <span
+                            className={`shrink-0 text-[12px] font-semibold rounded-full px-2 py-0.5 ${
+                              st.done ? 'bg-brand-soft text-brand' : 'bg-stone-100 text-stone-700'
+                            }`}
+                          >
+                            {st.text}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[14px] text-stone-500 mt-0.5 leading-snug">{c.desc}</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Administración, aparte para no tocarlo sin querer */}
+      <button
+        onClick={() => go('productos')}
+        className="mt-8 mx-auto flex items-center gap-2 text-[14px] text-stone-500 py-2 px-3 rounded-lg active:bg-stone-200"
+      >
+        <Tags className="w-4 h-4" />
+        Productos, precios y respaldo
+      </button>
+    </div>
+  );
+}
