@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useStore, computeDay } from './lib/store';
 import { todayLocal } from './lib/format';
 import Home from './screens/Home';
@@ -18,18 +18,38 @@ export default function App() {
   const [state, update, replace] = useStore();
   const [date, setDate] = useState(todayLocal);
   const [screen, setScreen] = useState(currentHash);
+  const homeScrollY = useRef(0);
+
+  // Guardar la posición de scroll mientras está en Inicio
+  useEffect(() => {
+    if (screen !== 'home') return;
+    const onScroll = () => {
+      homeScrollY.current = window.scrollY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [screen]);
 
   // Usar el historial del navegador para que el gesto "atrás" del iPhone funcione
   useEffect(() => {
     const onHash = () => {
       setScreen(currentHash());
-      window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Al entrar a una pantalla ir arriba; al volver a Inicio restaurar donde estaba
+  useLayoutEffect(() => {
+    if (screen === 'home') {
+      window.scrollTo(0, homeScrollY.current);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [screen]);
+
   const go = id => {
+    homeScrollY.current = window.scrollY;
     window.location.hash = id;
   };
   const back = () => {
