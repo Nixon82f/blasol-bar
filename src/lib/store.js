@@ -40,6 +40,54 @@ export function ensureDay(draft, date) {
   return draft.days[date];
 }
 
+async function pushStateToSupabase(draft, prevDebts = []) {
+  if (!isSupabaseConfigured || !supabase) return;
+  try {
+    await supabase.from('app_config').upsert({
+      id: 'main',
+      products: draft.products,
+      freezers: draft.freezers,
+      settings: draft.settings,
+      insumos: draft.insumos,
+      last_cost: draft.lastCost,
+      updated_at: new Date().toISOString(),
+    });
+
+    for (const [dateKey, dayData] of Object.entries(draft.days || {})) {
+      await supabase.from('daily_sheets').upsert({
+        date: dateKey,
+        rows: dayData.rows,
+        entradas: dayData.entradas,
+        gastos: dayData.gastos,
+        caja: dayData.caja,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    const currentIds = new Set((draft.debts || []).map(d => d.id));
+    const removedIds = (prevDebts || []).map(d => d.id).filter(id => !currentIds.has(id));
+    if (removedIds.length > 0) {
+      await supabase.from('debts').delete().in('id', removedIds);
+    }
+
+    if (draft.debts?.length) {
+      for (const d of draft.debts) {
+        await supabase.from('debts').upsert({
+          id: d.id,
+          name: d.name,
+          detail: d.detail,
+          amount: d.amount,
+          date: d.date,
+          status: d.status,
+          resolved_date: d.resolvedDate,
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Error guardando en Supabase:', e);
+  }
+}
+
 export function useStore() {
   const [state, setState] = useState(load);
   const syncTimeoutRef = useRef(null);
@@ -64,12 +112,26 @@ export function useStore() {
         const [configRes, sheetsRes, debtsRes] = await Promise.all([
           supabase.from('app_config').select('*').eq('id', 'main').maybeSingle(),
           supabase.from('daily_sheets').select('*'),
-          supabase.from('debts').select('*')
+          supabase.from('debts').select('*'),
         ]);
 
         if (!isMounted) return;
 
+        const remoteEmpty =
+          !configRes.data &&
+          (!sheetsRes.data || sheetsRes.data.length === 0) &&
+          (!debtsRes.data || debtsRes.data.length === 0);
+
         setState(prev => {
+          if (remoteEmpty) {
+            const hasLocal =
+              Object.keys(prev.days || {}).length > 0 || (prev.debts || []).length > 0;
+            if (hasLocal) {
+              pushStateToSupabase(prev);
+            }
+            return prev;
+          }
+
           const next = clone(prev);
           if (configRes.data) {
             if (configRes.data.products?.length) next.products = configRes.data.products;
@@ -80,14 +142,16 @@ export function useStore() {
           }
 
           if (sheetsRes.data) {
+            const remoteDays = {};
             sheetsRes.data.forEach(sheet => {
-              next.days[sheet.date] = {
+              remoteDays[sheet.date] = {
                 rows: sheet.rows || {},
                 entradas: sheet.entradas || [],
                 gastos: sheet.gastos || [],
-                caja: sheet.caja || { efectivo: '', transf: '', restarGastos: true }
+                caja: sheet.caja || { efectivo: '', transf: '', restarGastos: true },
               };
             });
+            next.days = remoteDays;
           }
 
           if (debtsRes.data) {
@@ -98,7 +162,7 @@ export function useStore() {
               amount: Number(d.amount),
               date: d.date,
               status: d.status,
-              resolvedDate: d.resolved_date
+              resolvedDate: d.resolved_date,
             }));
           }
 
@@ -110,6 +174,12 @@ export function useStore() {
     }
 
     fetchFromSupabase();
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchFromSupabase();
+    };
+    window.addEventListener('focus', fetchFromSupabase);
+    document.addEventListener('visibilitychange', onVisible);
 
     // Escuchar cambios en vivo (Realtime) para que ambos celulares vean lo mismo
     const channel = supabase.channel('realtime_blasol')
@@ -184,6 +254,8 @@ export function useStore() {
 
     return () => {
       isMounted = false;
+      window.removeEventListener('focus', fetchFromSupabase);
+      document.removeEventListener('visibilitychange', onVisible);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -197,49 +269,10 @@ export function useStore() {
       // Sincronizar a Supabase con debounce
       if (isSupabaseConfigured && supabase) {
         if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = setTimeout(async () => {
-          try {
-            // Guardar configuración
-            await supabase.from('app_config').upsert({
-              id: 'main',
-              products: draft.products,
-              freezers: draft.freezers,
-              settings: draft.settings,
-              insumos: draft.insumos,
-              last_cost: draft.lastCost,
-              updated_at: new Date().toISOString()
-            });
-
-            // Guardar días modificados
-            for (const [dateKey, dayData] of Object.entries(draft.days)) {
-              await supabase.from('daily_sheets').upsert({
-                date: dateKey,
-                rows: dayData.rows,
-                entradas: dayData.entradas,
-                gastos: dayData.gastos,
-                caja: dayData.caja,
-                updated_at: new Date().toISOString()
-              });
-            }
-
-            // Sincronizar deudas
-            if (draft.debts) {
-              for (const d of draft.debts) {
-                await supabase.from('debts').upsert({
-                  id: d.id,
-                  name: d.name,
-                  detail: d.detail,
-                  amount: d.amount,
-                  date: d.date,
-                  status: d.status,
-                  resolved_date: d.resolvedDate
-                });
-              }
-            }
-          } catch (e) {
-            console.error('Error guardando en Supabase:', e);
-          }
-        }, 600);
+        const prevDebts = prev.debts || [];
+        syncTimeoutRef.current = setTimeout(() => {
+          pushStateToSupabase(draft, prevDebts);
+        }, 400);
       }
 
       return draft;
