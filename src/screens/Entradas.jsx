@@ -38,7 +38,7 @@ export default function Entradas({ state, update, view, date, onBack }) {
               <div className="flex-1 min-w-0">
                 <div className="text-[16px] font-semibold truncate">{nameOf(e.pid)}</div>
                 <div className="text-[13px] text-stone-500">
-                  {e.qty} unid × {money(e.unitCost)} ·{' '}
+                  {e.qty} unid × C$ {num(e.unitCost) % 1 === 0 ? num(e.unitCost) : num(e.unitCost).toFixed(2)} ·{' '}
                   {e.momento === 'despues' ? 'Después del conteo' : 'Antes del conteo'} · {e.time}
                 </div>
               </div>

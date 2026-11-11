@@ -85,7 +85,7 @@ export default function Balance({ state, date, onBack }) {
         <>
           {/* Resultado */}
           <Card className="mt-3 p-5 text-center">
-            <div className="text-[15px] text-stone-500">Quedó libre</div>
+            <div className="text-[15px] text-stone-500">Ganancia neta</div>
             <div
               className={`text-[38px] font-extrabold tabular-nums tracking-tight ${
                 t.quedoLibre < 0 ? 'text-red-700' : 'text-stone-900'
@@ -139,7 +139,7 @@ export default function Balance({ state, date, onBack }) {
           <SectionTitle>Cómo se calcula</SectionTitle>
           <Card className="px-4 divide-y divide-stone-100">
             <Row label="Se vendió" value={money(t.ventas)} />
-            <Row label="Lo que costó esa mercadería" value={`- ${money(t.costoVendido)}`} muted />
+            <Row label="Costo de la mercadería vendida" value={`- ${money(t.costoVendido)}`} muted />
             <Row label="Ganancia en productos" value={money(t.gananciaProductos)} strong />
             {t.comprasDirectas > 0 && (
               <Row label="Botellas de licor compradas" value={`- ${money(t.comprasDirectas)}`} muted />
@@ -151,7 +151,7 @@ export default function Balance({ state, date, onBack }) {
             {t.fiadosPerdidos > 0 && (
               <Row label="Fiados que no pagaron" value={`- ${money(t.fiadosPerdidos)}`} muted />
             )}
-            <Row label="Quedó libre" value={money(t.quedoLibre)} strong />
+            <Row label="Ganancia neta" value={money(t.quedoLibre)} strong />
           </Card>
 
           {/* Por tipo */}

@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { money, prettyDate, addDays, todayLocal, weekRange, monthRange } from '../lib/format';
 import { computeRange } from '../lib/store';
@@ -58,7 +59,7 @@ const SECCIONES = [
         id: 'cierre',
         icon: Calculator,
         title: 'Cierre del día',
-        desc: 'Ventas, saldo libre y cuadre de caja',
+        desc: 'Ventas, ganancia y cuadre de caja',
         primary: true,
       },
       {
@@ -92,6 +93,7 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
   const semana = useMemo(() => computeRange(state, wk.from, wk.to), [state, wk.from, wk.to]);
   const mes = useMemo(() => computeRange(state, mo.from, mo.to), [state, mo.from, mo.to]);
   const [backupOk, setBackupOk] = useState(false);
+  const [hideBackup, setHideBackup] = useState(false);
 
   const entradasHoy = (view.day.entradas || []).length;
   const caja = view.day.caja || {};
@@ -175,7 +177,7 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
           <div className="text-[17px] font-bold tabular-nums">{money(t.ventas)}</div>
         </div>
         <div className="py-3">
-          <div className="text-[12px] text-stone-500">Quedó libre</div>
+          <div className="text-[12px] text-stone-500">Ganancia</div>
           <div
             className={`text-[17px] font-bold tabular-nums ${view.activo && t.quedoLibre < 0 ? 'text-red-700' : 'text-stone-900'}`}
           >
@@ -196,8 +198,8 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
           className="mt-2 w-full grid grid-cols-2 bg-white border border-stone-200 rounded-2xl divide-x divide-stone-200 text-center active:bg-stone-50"
         >
           {[
-            ['Libre esta semana', semana],
-            ['Libre este mes', mes],
+            ['Ganancia esta semana', semana],
+            ['Ganancia este mes', mes],
           ].map(([label, r]) => (
             <div key={label} className="py-3">
               <div className="text-[12px] text-stone-500">{label}</div>
@@ -218,20 +220,33 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
       )}
 
       {/* Recordatorio de respaldo */}
-      {(needsBackup(state) || backupOk) && (
-        <div className="mt-4 bg-brand-soft border border-brand/25 rounded-2xl p-4">
+      {!hideBackup && (needsBackup(state) || backupOk) && (
+        <div className="relative mt-4 bg-brand-soft border border-brand/25 rounded-2xl p-4">
+          <button
+            type="button"
+            onClick={() => {
+              setHideBackup(true);
+              update(d => {
+                d.lastBackup = todayLocal();
+              });
+            }}
+            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-lg flex items-center justify-center text-stone-500 active:bg-brand/10"
+            aria-label="Cerrar aviso"
+          >
+            <X className="w-4 h-4" />
+          </button>
           {backupOk ? (
-            <div className="flex items-center gap-2 text-[15px] text-brand font-medium">
-              <ShieldCheck className="w-5 h-5" /> Respaldo guardado. El próximo se lo recuerdo en una semana.
+            <div className="flex items-center gap-2 pr-6 text-[15px] text-brand font-medium">
+              <ShieldCheck className="w-5 h-5 shrink-0" /> Respaldo guardado. El próximo se lo recuerdo en una semana.
             </div>
           ) : (
             <>
-              <div className="text-[15px] font-semibold text-stone-900">Guarde un respaldo</div>
-              <p className="text-[14px] text-stone-600 mt-0.5 leading-snug">
+              <div className="pr-6 text-[15px] font-semibold text-stone-900">Guarde un respaldo</div>
+              <p className="text-[14px] text-stone-600 mt-0.5 pr-4 leading-snug">
                 {diasRespaldo === null
                   ? 'Todavía no ha guardado ninguno.'
                   : `Hace ${diasRespaldo} días que no guarda uno.`}{' '}
-                Así no se pierde nada si se borra Safari o cambia de celular.
+                Así tiene una copia extra en su teléfono.
               </p>
               <button
                 onClick={hacerRespaldo}

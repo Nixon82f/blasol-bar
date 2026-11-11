@@ -45,7 +45,7 @@ export default function Cierre({ state, update, view, date, onBack }) {
     if (t.comprasDirectas) L.push(`Compra de licor: ${money(t.comprasDirectas)}`);
     L.push(`Gastos del día: ${money(t.gastos)}`);
     if (t.fiadosPerdidos) L.push(`Fiados perdidos: ${money(t.fiadosPerdidos)}`);
-    L.push(`QUEDÓ LIBRE: ${money(t.quedoLibre)}`);
+    L.push(`GANANCIA NETA: ${money(t.quedoLibre)}`);
     if (hayConteoCaja) {
       L.push('');
       L.push(`Efectivo: ${money(caja.efectivo)}`);
@@ -77,7 +77,7 @@ export default function Cierre({ state, update, view, date, onBack }) {
     <Screen title="Cierre del día" subtitle={prettyDate(date)} onBack={onBack}>
       {/* Resultado principal */}
       <Card className="p-5 text-center">
-        <div className="text-[15px] text-stone-500">Quedó libre</div>
+        <div className="text-[15px] text-stone-500">Ganancia neta</div>
         <div className={`text-[38px] font-extrabold tabular-nums tracking-tight ${view.activo && t.quedoLibre < 0 ? 'text-red-700' : 'text-stone-900'}`}>
           {view.activo ? money(t.quedoLibre) : '—'}
         </div>
@@ -85,7 +85,7 @@ export default function Cierre({ state, update, view, date, onBack }) {
           {!view.activo
             ? 'Todavía no hay nada anotado hoy'
             : t.quedoLibre >= 0
-              ? 'Ganancia después de pagar todo'
+              ? 'Ganancia libre después de costos y gastos'
               : 'Hoy no alcanzó para cubrir los gastos'}
         </div>
       </Card>
@@ -93,7 +93,7 @@ export default function Cierre({ state, update, view, date, onBack }) {
       <SectionTitle>Cómo se calcula</SectionTitle>
       <Card className="px-4 divide-y divide-stone-100">
         <Row label="Se vendió" value={money(t.ventas)} />
-        <Row label="Lo que costó esa mercadería" value={`- ${money(t.costoVendido)}`} muted />
+        <Row label="Costo de la mercadería vendida" value={`- ${money(t.costoVendido)}`} muted />
         <Row label="Ganancia en productos" value={money(t.gananciaProductos)} strong />
         {t.comprasDirectas > 0 && <Row label="Botellas de licor compradas" value={`- ${money(t.comprasDirectas)}`} muted />}
         {t.mermas > 0 && <Row label="Quebradas o regaladas" value={`- ${money(t.mermas)}`} muted />}
@@ -102,7 +102,7 @@ export default function Cierre({ state, update, view, date, onBack }) {
         ))}
         {t.gastos === 0 && <Row label="Gastos" value="C$ 0" muted />}
         {t.fiadosPerdidos > 0 && <Row label="Fiados que no pagaron" value={`- ${money(t.fiadosPerdidos)}`} muted />}
-        <Row label="Quedó libre" value={money(t.quedoLibre)} strong />
+        <Row label="Ganancia neta" value={money(t.quedoLibre)} strong />
       </Card>
 
       <SectionTitle>Cuadrar la caja (opcional)</SectionTitle>
