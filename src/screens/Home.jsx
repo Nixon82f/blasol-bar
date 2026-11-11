@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   ClipboardList,
   CalendarRange,
@@ -9,12 +9,9 @@ import {
   Tags,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
-  X,
 } from 'lucide-react';
 import { money, prettyDate, addDays, todayLocal, weekRange, monthRange } from '../lib/format';
 import { computeRange } from '../lib/store';
-import { needsBackup, daysSinceBackup, shareBackup } from '../lib/backup';
 
 // Ordenado según el día de trabajo
 const SECCIONES = [
@@ -92,8 +89,6 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
   const mo = monthRange(date);
   const semana = useMemo(() => computeRange(state, wk.from, wk.to), [state, wk.from, wk.to]);
   const mes = useMemo(() => computeRange(state, mo.from, mo.to), [state, mo.from, mo.to]);
-  const [backupOk, setBackupOk] = useState(false);
-  const [hideBackup, setHideBackup] = useState(false);
 
   const entradasHoy = (view.day.entradas || []).length;
   const caja = view.day.caja || {};
@@ -113,16 +108,6 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
     cierre: cajaContada ? { done: true, text: 'Caja contada' } : null,
     balance: null,
   };
-
-  const hacerRespaldo = async () => {
-    if (await shareBackup(state)) {
-      update(d => {
-        d.lastBackup = todayLocal();
-      });
-      setBackupOk(true);
-    }
-  };
-  const diasRespaldo = daysSinceBackup(state);
 
   return (
     <div className="max-w-xl mx-auto px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[calc(96px+env(safe-area-inset-bottom))]">
@@ -217,46 +202,6 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
         <p className="mt-3 text-center text-[14px] text-stone-500">
           El inventario de inicio viene del {prettyDate(view.prevDate).toLowerCase()}.
         </p>
-      )}
-
-      {/* Recordatorio de respaldo */}
-      {!hideBackup && (needsBackup(state) || backupOk) && (
-        <div className="relative mt-4 bg-brand-soft border border-brand/25 rounded-2xl p-4">
-          <button
-            type="button"
-            onClick={() => {
-              setHideBackup(true);
-              update(d => {
-                d.lastBackup = todayLocal();
-              });
-            }}
-            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-lg flex items-center justify-center text-stone-500 active:bg-brand/10"
-            aria-label="Cerrar aviso"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          {backupOk ? (
-            <div className="flex items-center gap-2 pr-6 text-[15px] text-brand font-medium">
-              <ShieldCheck className="w-5 h-5 shrink-0" /> Respaldo guardado. El próximo se lo recuerdo en una semana.
-            </div>
-          ) : (
-            <>
-              <div className="pr-6 text-[15px] font-semibold text-stone-900">Guarde un respaldo</div>
-              <p className="text-[14px] text-stone-600 mt-0.5 pr-4 leading-snug">
-                {diasRespaldo === null
-                  ? 'Todavía no ha guardado ninguno.'
-                  : `Hace ${diasRespaldo} días que no guarda uno.`}{' '}
-                Así tiene una copia extra en su teléfono.
-              </p>
-              <button
-                onClick={hacerRespaldo}
-                className="mt-3 h-11 w-full rounded-xl bg-brand text-white font-semibold text-[15px] active:bg-brand-dark"
-              >
-                Mandar respaldo por WhatsApp
-              </button>
-            </>
-          )}
-        </div>
       )}
 
       {/* Secciones por momento del día */}
