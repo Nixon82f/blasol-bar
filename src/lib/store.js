@@ -311,17 +311,20 @@ function computeSingle(state, date, carryIn) {
 
   for (const product of state.products) {
     const r = day.rows[product.id] || {};
-    const ingreso = (day.entradas || [])
-      .filter(e => e.pid === product.id)
+    const entsProd = (day.entradas || []).filter(e => e.pid === product.id);
+    const ingresoAntes = entsProd
+      .filter(e => e.momento !== 'despues')
       .reduce((a, e) => a + num(e.qty), 0);
+    const ingresoDespues = entsProd
+      .filter(e => e.momento === 'despues')
+      .reduce((a, e) => a + num(e.qty), 0);
+    const ingreso = ingresoAntes + ingresoDespues;
 
     let row;
     if (product.kind === 'compra') {
-      const gasto = (day.entradas || [])
-        .filter(e => e.pid === product.id)
-        .reduce((a, e) => a + num(e.qty) * num(e.unitCost), 0);
+      const gasto = entsProd.reduce((a, e) => a + num(e.qty) * num(e.unitCost), 0);
       comprasDirectas += gasto;
-      row = { kind: 'compra', ingreso, gasto, venta: 0, total: 0, costo: 0 };
+      row = { kind: 'compra', ingreso, ingresoAntes, ingresoDespues, gasto, venta: 0, total: 0, costo: 0 };
     } else if (product.kind === 'directo') {
       const venta = num(r.vendidos);
       const m = moneyFor(product, venta, r.sueltas);
@@ -330,11 +333,11 @@ function computeSingle(state, date, carryIn) {
     } else {
       const inicio = r.inicioManual !== undefined && r.inicioManual !== '' ? num(r.inicioManual) : num(carryIn[product.id]);
       const fiado = num(r.fiado);
-      const disponible = inicio + ingreso - fiado;
+      const disponible = inicio + ingresoAntes - fiado;
       const counted = Boolean(r.counted);
       const hay = counted ? Object.values(r.freezers || {}).reduce((a, v) => a + num(v), 0) : null;
       const venta = counted ? Math.max(0, disponible - hay) : 0;
-      const invFinal = counted ? hay : disponible;
+      const invFinal = (counted ? hay : disponible) + ingresoDespues;
       const m = moneyFor(product, venta, r.sueltas);
       const uc = unitCost(state, day, product);
       const costo = venta * uc;
@@ -343,6 +346,8 @@ function computeSingle(state, date, carryIn) {
         kind: 'inventario',
         inicio,
         ingreso,
+        ingresoAntes,
+        ingresoDespues,
         fiado,
         disponible,
         counted,

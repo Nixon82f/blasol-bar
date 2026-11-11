@@ -91,7 +91,8 @@ export default function Conteo({ state, update, view, date, onBack }) {
                   ) : (
                     <>
                       Último conteo: {r.inicio ?? 0}
-                      {r.ingreso > 0 && ` · Entró ${r.ingreso}`}
+                      {r.ingresoAntes > 0 && ` · Entró ${r.ingresoAntes}`}
+                      {r.ingresoDespues > 0 && ` · +${r.ingresoDespues} después`}
                       {r.fiado > 0 && ` · Se quebraron ${r.fiado}`}
                     </>
                   )}
@@ -173,9 +174,8 @@ function CountSheet({ product, row, raw, freezers, hasNext, onSave, onClose, onC
   const [addingFreezer, setAddingFreezer] = useState(false);
 
   const hay = Object.values(qty).reduce((a, v) => a + num(v), 0);
-  const disponible = num(row.inicio) + num(row.ingreso) - num(fiado);
+  const disponible = num(row.inicio) + num(row.ingresoAntes) - num(fiado);
   const venta = isDirect ? num(vendidos) : Math.max(0, disponible - hay);
-  const sobra = !isDirect && hay > disponible ? hay - disponible : 0;
   const m = moneyFor(product, venta, showSueltas ? sueltas : '');
 
   const doSave = goNext => {
@@ -221,10 +221,12 @@ function CountSheet({ product, row, raw, freezers, hasNext, onSave, onClose, onC
               <span className="text-stone-600">Último conteo</span>
               <span className="font-semibold tabular-nums">{row.inicio ?? 0}</span>
             </div>
-            <div className="flex justify-between py-2.5 text-[15px]">
-              <span className="text-stone-600">Entró hoy</span>
-              <span className="font-semibold tabular-nums">{row.ingreso ?? 0}</span>
-            </div>
+            {num(row.ingresoAntes) > 0 && (
+              <div className="flex justify-between py-2.5 text-[15px]">
+                <span className="text-stone-600">Entró antes del conteo</span>
+                <span className="font-semibold tabular-nums">+ {row.ingresoAntes}</span>
+              </div>
+            )}
             {num(fiado) > 0 && (
               <div className="flex justify-between py-2.5 text-[15px]">
                 <span className="text-stone-600">Quebradas / regaladas</span>
@@ -235,6 +237,12 @@ function CountSheet({ product, row, raw, freezers, hasNext, onSave, onClose, onC
               <span className="text-stone-900 font-medium">Debería haber</span>
               <span className="font-bold tabular-nums">{disponible}</span>
             </div>
+            {num(row.ingresoDespues) > 0 && (
+              <div className="flex justify-between py-2.5 text-[15px]">
+                <span className="text-stone-600">Entró después del conteo (para mañana)</span>
+                <span className="font-semibold tabular-nums">+ {row.ingresoDespues}</span>
+              </div>
+            )}
           </Card>
 
           {/* Freezers */}
@@ -297,12 +305,6 @@ function CountSheet({ product, row, raw, freezers, hasNext, onSave, onClose, onC
           </div>
         )}
       </Card>
-
-      {sobra > 0 && (
-        <p className="mt-3 text-[14px] text-red-700">
-          Hay {sobra} más de lo que debería. Revise el conteo o si faltó anotar una entrada.
-        </p>
-      )}
 
       {/* Opcionales */}
       {product.pack && venta > 0 && (

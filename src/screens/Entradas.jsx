@@ -38,7 +38,8 @@ export default function Entradas({ state, update, view, date, onBack }) {
               <div className="flex-1 min-w-0">
                 <div className="text-[16px] font-semibold truncate">{nameOf(e.pid)}</div>
                 <div className="text-[13px] text-stone-500">
-                  {e.qty} unid × {money(e.unitCost)} · {e.time}
+                  {e.qty} unid × {money(e.unitCost)} ·{' '}
+                  {e.momento === 'despues' ? 'Después del conteo' : 'Antes del conteo'} · {e.time}
                 </div>
               </div>
               <span className="text-[16px] font-semibold tabular-nums">{money(num(e.qty) * num(e.unitCost))}</span>
@@ -74,12 +75,13 @@ export default function Entradas({ state, update, view, date, onBack }) {
       {product && (
         <EntrySheet
           product={product}
+          alreadyCounted={Boolean(view.rows[product.id]?.counted)}
           lastCost={state.lastCost[product.id] ?? (num(product.cost) || null)}
           onClose={() => setProduct(null)}
-          onSave={(qty, unitCost) => {
+          onSave={(qty, unitCost, momento) => {
             update(d => {
               const day = ensureDay(d, date);
-              day.entradas.push({ id: uid(), pid: product.id, qty, unitCost, time: nowTime() });
+              day.entradas.push({ id: uid(), pid: product.id, qty, unitCost, momento, time: nowTime() });
               d.lastCost[product.id] = unitCost;
             });
             setProduct(null);
@@ -115,10 +117,11 @@ export function ProductPicker({ products, onPick, onClose, title = '¿Qué produ
   );
 }
 
-function EntrySheet({ product, lastCost, onSave, onClose }) {
+function EntrySheet({ product, alreadyCounted, lastCost, onSave, onClose }) {
   const [qty, setQty] = useState('');
   const [mode, setMode] = useState('unidad'); // 'unidad' | 'total'
   const [price, setPrice] = useState(lastCost ? String(lastCost) : '');
+  const [momento, setMomento] = useState(alreadyCounted ? 'despues' : 'despues');
 
   const q = num(qty);
   const unitCost = mode === 'unidad' ? num(price) : q ? num(price) / q : 0;
@@ -130,7 +133,7 @@ function EntrySheet({ product, lastCost, onSave, onClose }) {
       subtitle="Anotar entrada"
       onClose={onClose}
       footer={
-        <Button className="w-full" disabled={!q} onClick={() => onSave(q, Math.round(unitCost * 100) / 100)}>
+        <Button className="w-full" disabled={!q} onClick={() => onSave(q, Math.round(unitCost * 100) / 100, momento)}>
           Guardar entrada
         </Button>
       }
@@ -193,6 +196,37 @@ function EntrySheet({ product, lastCost, onSave, onClose }) {
           </div>
         )}
       </Card>
+
+      {product.kind !== 'compra' && (
+        <Card className="p-4 mt-4">
+          <div className="text-[16px] font-semibold mb-1">¿Entró antes o después del conteo inicial?</div>
+          <p className="text-[13px] text-stone-500 mb-3 leading-snug">
+            El conteo inicial corresponde a las unidades que quedaron del día de ayer.
+          </p>
+          <div className="grid grid-cols-2 bg-stone-100 rounded-xl p-1">
+            {[
+              ['despues', 'Después del conteo'],
+              ['antes', 'Antes del conteo'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMomento(id)}
+                className={`h-10 rounded-lg text-[14px] font-medium ${
+                  momento === id ? 'bg-white shadow-sm text-stone-900' : 'text-stone-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[13px] text-stone-600 leading-snug">
+            {momento === 'despues'
+              ? 'No estaba en el freezer cuando contó hoy: se suma al inventario disponible para mañana.'
+              : 'Ya estaba metida en el freezer cuando hizo el conteo de hoy.'}
+          </p>
+        </Card>
+      )}
     </Sheet>
   );
 }

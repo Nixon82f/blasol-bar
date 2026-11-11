@@ -69,6 +69,17 @@ const SECCIONES = [
       },
     ],
   },
+  {
+    titulo: 'Administración',
+    cards: [
+      {
+        id: 'productos',
+        icon: Tags,
+        title: 'Productos, precios y respaldo',
+        desc: 'Catálogo, costos y copia de seguridad',
+      },
+    ],
+  },
 ];
 
 export default function Home({ state, update, date, setDate, view, go, pendingDebts }) {
@@ -120,7 +131,7 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
           className="w-32 h-32 rounded-3xl object-contain bg-white border border-stone-200 p-2"
         />
         <h1 className="mt-3 text-[22px] font-black tracking-tight text-stone-900">Bla Sol Bar</h1>
-        <span className="mt-1 text-[12px] text-brand border border-brand/30 bg-brand-soft rounded-md px-2 py-0.5">
+        <span className="mt-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-stone-500">
           Inventario y Caja
         </span>
 
@@ -288,15 +299,6 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
           </div>
         </section>
       ))}
-
-      {/* Administración, aparte para no tocarlo sin querer */}
-      <button
-        onClick={() => go('productos')}
-        className="mt-8 mx-auto flex items-center gap-2 text-[14px] text-stone-500 py-2 px-3 rounded-lg active:bg-stone-200"
-      >
-        <Tags className="w-4 h-4" />
-        Productos, precios y respaldo
-      </button>
     </div>
   );
 }
