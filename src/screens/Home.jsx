@@ -9,7 +9,6 @@ import {
   Tags,
   ChevronLeft,
   ChevronRight,
-  Check,
   ShieldCheck,
 } from 'lucide-react';
 import { money, prettyDate, addDays, todayLocal, weekRange, monthRange } from '../lib/format';
@@ -25,13 +24,13 @@ const SECCIONES = [
         id: 'conteo',
         icon: ClipboardList,
         title: 'Contar inventario',
-        desc: 'Cuente lo que hay en cada freezer. La app saca solita cuánto se vendió.',
+        desc: 'Cuente lo que hay en cada freezer',
       },
       {
         id: 'entradas',
         icon: Truck,
         title: 'Entró mercadería',
-        desc: 'Anote lo que trajo el proveedor y a cuánto lo compró.',
+        desc: 'Anote lo que trajo el proveedor y el costo',
       },
     ],
   },
@@ -42,13 +41,13 @@ const SECCIONES = [
         id: 'gastos',
         icon: Receipt,
         title: 'Gastos',
-        desc: 'Planilla, recibos, hielo, cloro y cualquier otro gasto.',
+        desc: 'Planilla, recibos, hielo, cloro y más',
       },
       {
         id: 'fiados',
         icon: UserRound,
         title: 'Fiados',
-        desc: 'Quién debe, cuánto y si ya pagó.',
+        desc: 'Quién debe, cuánto y si ya pagó',
       },
     ],
   },
@@ -59,13 +58,14 @@ const SECCIONES = [
         id: 'cierre',
         icon: Calculator,
         title: 'Cierre del día',
-        desc: 'Cuánto se vendió, cuánto quedó libre y si cuadra la caja.',
+        desc: 'Ventas, saldo libre y cuadre de caja',
+        primary: true,
       },
       {
         id: 'balance',
         icon: CalendarRange,
         title: 'Balance semana y mes',
-        desc: 'Cómo va el negocio en toda la semana o el mes, no solo un día.',
+        desc: 'Cómo va el negocio, no solo hoy',
       },
     ],
   },
@@ -112,7 +112,7 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
   const diasRespaldo = daysSinceBackup(state);
 
   return (
-    <div className="max-w-xl mx-auto px-4 pb-12 pt-[max(2rem,env(safe-area-inset-top))]">
+    <div className="max-w-xl mx-auto px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[calc(96px+env(safe-area-inset-bottom))]">
       <div className="flex flex-col items-center text-center">
         <img
           src="/logo.jpg"
@@ -233,55 +233,60 @@ export default function Home({ state, update, date, setDate, view, go, pendingDe
         </div>
       )}
 
-      {/* Tarjetas por momento del día */}
+      {/* Secciones por momento del día */}
       {SECCIONES.map(sec => (
-        <div key={sec.titulo}>
-          <h2 className="mt-6 mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-stone-500">
+        <section key={sec.titulo}>
+          <h2 className="mt-6 mb-2 mx-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-stone-500">
             {sec.titulo}
           </h2>
-          <div className="grid grid-cols-1 gap-3">
-            {sec.cards.map(c => {
+          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
+            {sec.cards.map((c, idx) => {
               const Icon = c.icon;
               const st = status[c.id];
               return (
                 <button
                   key={c.id}
+                  type="button"
                   onClick={() => go(c.id)}
-                  className="text-left bg-white border border-stone-200 rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:bg-stone-50"
+                  className={`relative w-full min-h-[64px] py-[14px] px-4 flex items-center gap-[14px] text-left transition-colors duration-[120ms] ${
+                    c.primary ? 'bg-brand/[0.06] active:bg-brand/[0.06]' : 'bg-white active:bg-brand/[0.06]'
+                  }`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-12 h-12 shrink-0 rounded-xl flex items-center justify-center ${
-                        st?.done ? 'bg-brand text-white' : 'bg-brand-soft text-brand'
-                      }`}
-                    >
-                      {st?.done && c.id !== 'gastos' ? (
-                        <Check className="w-6 h-6" strokeWidth={2.5} />
-                      ) : (
-                        <Icon className="w-6 h-6" strokeWidth={1.75} />
+                  {idx > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-0 left-[54px] right-0 h-px bg-stone-200/60"
+                    />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 shrink-0 text-brand ${
+                      c.primary ? 'fill-brand [&>line]:stroke-white [&>path]:stroke-white' : ''
+                    }`}
+                    strokeWidth={1.75}
+                  />
+                  <div className="min-w-0 flex-1 flex flex-col gap-[2px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[16px] font-semibold text-stone-900 leading-tight truncate">
+                        {c.title}
+                      </span>
+                      {st && (
+                        <span
+                          className={`shrink-0 text-[12px] font-semibold rounded-full px-2 py-0.5 ${
+                            st.done ? 'bg-brand-soft text-brand' : 'bg-stone-100 text-stone-700'
+                          }`}
+                        >
+                          {st.text}
+                        </span>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[17px] font-bold text-stone-900">{c.title}</span>
-                        {st && (
-                          <span
-                            className={`shrink-0 text-[12px] font-semibold rounded-full px-2 py-0.5 ${
-                              st.done ? 'bg-brand-soft text-brand' : 'bg-stone-100 text-stone-700'
-                            }`}
-                          >
-                            {st.text}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[14px] text-stone-500 mt-0.5 leading-snug">{c.desc}</p>
-                    </div>
+                    <p className="text-[13px] font-normal text-stone-500 leading-[1.35] truncate">{c.desc}</p>
                   </div>
+                  <ChevronRight className="w-4 h-4 shrink-0 text-stone-400" strokeWidth={1.75} />
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
       ))}
 
       {/* Administración, aparte para no tocarlo sin querer */}
