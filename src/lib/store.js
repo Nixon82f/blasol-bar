@@ -62,7 +62,7 @@ export function useStore() {
     async function fetchFromSupabase() {
       try {
         const [configRes, sheetsRes, debtsRes] = await Promise.all([
-          supabase.from('app_config').select('*').eq('id', 'main').single(),
+          supabase.from('app_config').select('*').eq('id', 'main').maybeSingle(),
           supabase.from('daily_sheets').select('*'),
           supabase.from('debts').select('*')
         ]);
